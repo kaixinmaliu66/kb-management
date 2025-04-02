@@ -1,4 +1,4 @@
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, computed } from 'vue';
 import { saveAs } from 'file-saver';
 import { ElMessage } from 'element-plus';
 import _ from 'lodash';
@@ -10,6 +10,12 @@ const activeTab = ref('0')
 const appTableData = ref([]);
 const originalAppData = ref([]);
 const hostTableData = ref([]);
+
+const totalHostsBeforeFilter = computed(() =>
+    _.sumBy(originalAppData.value.length ? originalAppData.value : appTableData.value,
+        (app) => app.hosts?.length || 0)
+);
+const removedHostsCount = ref(0);
 
 const repeatedHosts = ref(new Map());
 const abnormalHosts = ref(new Set());
@@ -131,40 +137,48 @@ export default function () {
 
     const filterHosts = async (state) => {
         if (state === -1) {
-            hostTableData.value = [];
-            selectedHostFile.value = null;
+            if (!originalAppData.value.length) {
+                ElMessage.info('当前无可恢复的数据');
+                return;
+            }
 
-            // **恢复到未过滤状态**
             appTableData.value = [...originalAppData.value];
+            // hostTableData.value = [];
+            removedHostsCount.value = 0;
+            ElMessage.success('已恢复至未过滤状态');
             return;
         }
 
-        // **如果 `originalAppData` 为空，则初始化**
+        if (!appTableData.value.length || !hostTableData.value.length) {
+            ElMessage.warning('无可过滤的数据或未提供 Host 数据');
+            return;
+        }
+
+        // **首次过滤时备份数据**
         if (!originalAppData.value.length) {
             originalAppData.value = [...appTableData.value];
         }
 
-        console.log('🚀 过滤前 appTableData:', appTableData.value);
-        console.log('🚀 hostTableData:', hostTableData.value);
+        const hostSet = new Set(hostTableData.value.map(h => h.host));
 
-        // **如果 `hostTableData` 为空，恢复原数据**
-        if (!hostTableData.value.length) {
-            appTableData.value = [...originalAppData.value];
+        // **过滤数据**
+        appTableData.value = appTableData.value.map(app => ({
+            ...app,
+            hosts: app.hosts?.filter(host => !hostSet.has(host)) || []
+        }));
+
+        await nextTick();
+
+        // **计算被移除的 Host 数量**
+        const totalHostsAfterFilter = _.sumBy(appTableData.value, (app) => app.hosts?.length || 0);
+        removedHostsCount.value = totalHostsBeforeFilter.value - totalHostsAfterFilter;
+
+        if (removedHostsCount.value === 0) {
+            ElMessage.info('没有匹配的 Host，无需更新');
             return;
         }
 
-        // **🔥 这里确保 `hostSet` 被正确声明**
-        const hostSet = new Set(hostTableData.value.map(h => h.host));
-
-        // **🚀 重新赋值 `appTableData`，确保 Vue 响应式更新**
-        appTableData.value = appTableData.value.map(app => ({
-            ...app,
-            hosts: app.hosts.filter(host => !hostSet.has(host))
-        }));
-
-        console.log('🚀 过滤后 appTableData:', appTableData.value);
-
-        await nextTick();
+        ElMessage.success(`Host 过滤完成`);
         activeTab.value = '0';
     };
 
@@ -184,6 +198,9 @@ export default function () {
         countH2a: (data) => countOccurrences(data, (h) => h, 'count-h2a.csv'),
         keywordH: (data, keyword) => countKeywordOccurrences(data, keyword, (h) => h, `${keyword}-h.csv`),
         splitByHostCount,
-        filterHosts
+        filterHosts,
+        exportToTsvFile,
+        totalHostsBeforeFilter,
+        removedHostsCount
     };
 }

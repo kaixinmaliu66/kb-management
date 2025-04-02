@@ -1,9 +1,9 @@
 <template>
-  <div class="p-4">
+  <div class="p-4 ">
     <el-card>
       <!-- 特征库文件上传 -->
       <div class="mb-2 flex gap-2 items-center">
-        <span>特征库文件：</span>
+        <span class="text-red-500 dark:text-blue-500">特征库文件：</span>
         <el-upload :show-file-list="false" :on-change="handleKnowledgeUpload" :auto-upload="false" multiple>
           <el-button type="warning" plain>上传文件</el-button>
         </el-upload>

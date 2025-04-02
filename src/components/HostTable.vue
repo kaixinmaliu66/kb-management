@@ -1,7 +1,6 @@
 <template>
     <div>
-        <div>总数据：{{ props.tableData.length }}</div>
-        <el-table :data="paginatedData" border stripe height="800">
+        <el-table :data="paginatedData" border stripe style="height:calc(100vh - 350px)">
             <el-table-column type="index" label="#" width="60" />
             <el-table-column prop="host" label="host" />
             <el-table-column prop="count" label="count" width="200" />
@@ -9,7 +8,7 @@
 
         <!-- 分页 -->
         <el-pagination v-model:current-page="currentPage" :page-size="pageSize" :total="props.tableData.length"
-            layout="prev, pager, next, jumper" class="mt-4 text-center" />
+            layout="total,prev, pager, next" class="mt-4 text-center" />
     </div>
 </template>
 
